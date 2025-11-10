@@ -1,0 +1,12 @@
+{
+  "name": "cad-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@8.15.3",
+  "scripts": {
+    "build": "pnpm -r run build",
+    "lint": "pnpm -r run lint",
+    "format": "pnpm -r run format",
+    "dev": "pnpm --filter @cad/api dev & pnpm --filter @cad/web dev"
+  }
+}

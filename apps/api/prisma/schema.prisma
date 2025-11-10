@@ -1,0 +1,242 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+model Agency {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  users     User[]
+  units     Unit[]
+  beats     Beat[]
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  role         String
+  agencyId     String?
+  agency       Agency?   @relation(fields: [agencyId], references: [id])
+  isActive     Boolean   @default(true)
+  mfaEnabled   Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  verifiedAt   DateTime?
+  refreshToken String?
+  reports      Report[]  @relation("ReportAuthor")
+  approvals    Report[]  @relation("ReportApprover")
+  auditLogs    AuditLog[] @relation("AuditActor")
+  notifications Notification[]
+}
+
+model Beat {
+  id        String  @id @default(uuid())
+  name      String
+  agencyId  String
+  agency    Agency  @relation(fields: [agencyId], references: [id])
+  units     Unit[]
+}
+
+model Unit {
+  id           String   @id @default(uuid())
+  callsign     String   @unique
+  type         String
+  beatId       String?
+  beat         Beat?    @relation(fields: [beatId], references: [id])
+  capability   String[]
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id])
+  dutyStatus   String   @default("OFF")
+  lastSeenAt   DateTime?
+  locationGeom String?
+  incidents    IncidentUnit[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Incident {
+  id            String          @id @default(uuid())
+  number        Int             @unique @default(autoincrement())
+  priority      Int
+  type          String
+  status        String          @default("OPEN")
+  openedAt      DateTime        @default(now())
+  closedAt      DateTime?
+  address       String
+  locationGeom  String?
+  narrative     String
+  createdById   String?
+  createdBy     User?           @relation("IncidentCreator", fields: [createdById], references: [id])
+  dispatcherId  String?
+  dispatcher    User?           @relation("IncidentDispatcher", fields: [dispatcherId], references: [id])
+  units         IncidentUnit[]
+  reports       Report[]
+  citations     Citation[]
+  arrests       Arrest[]
+  evidence      Evidence[]
+}
+
+model IncidentUnit {
+  incidentId String
+  unitId     String
+  assignedAt DateTime @default(now())
+  clearedAt  DateTime?
+  role       String?
+  incident   Incident @relation(fields: [incidentId], references: [id])
+  unit       Unit     @relation(fields: [unitId], references: [id])
+
+  @@id([incidentId, unitId])
+}
+
+model Person {
+  id               String    @id @default(uuid())
+  firstName        String
+  lastName         String
+  dob              DateTime
+  sex              String
+  race             String
+  heightCm         Int
+  weightKg         Int
+  dlNumber         String?
+  photos           Json     @default("[]")
+  flags            String[]
+  notes            String?
+  approvalStatus   String   @default("PENDING")
+  submittedById    String?
+  submittedBy      User?    @relation("PersonSubmitter", fields: [submittedById], references: [id])
+  vehicles         Vehicle[]
+  reports          Report[]  @relation("ReportSubject")
+  arrests          Arrest[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  sealed           Boolean   @default(false)
+}
+
+model Vehicle {
+  id             String   @id @default(uuid())
+  plate          String
+  state          String
+  vin            String?
+  make           String
+  model          String
+  year           Int
+  color          String
+  ownerPersonId  String?
+  owner          Person?  @relation(fields: [ownerPersonId], references: [id])
+  insuranceStatus String  @default("UNKNOWN")
+  flags          String[]
+  approvalStatus String   @default("PENDING")
+  submittedById  String?
+  submittedBy    User?    @relation("VehicleSubmitter", fields: [submittedById], references: [id])
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([plate, state])
+}
+
+model Report {
+  id             String   @id @default(uuid())
+  incidentId     String
+  authorId       String
+  type           String
+  status         String   @default("DRAFT")
+  bodyRtf        String
+  revisionsJson  Json     @default("[]")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  approvedById   String?
+  subjectPersonId String?
+  approvedBy     User?    @relation("ReportApprover", fields: [approvedById], references: [id])
+  subjectPerson  Person?  @relation("ReportSubject", fields: [subjectPersonId], references: [id])
+  incident       Incident @relation(fields: [incidentId], references: [id])
+  author         User     @relation("ReportAuthor", fields: [authorId], references: [id])
+}
+
+model Citation {
+  id          String   @id @default(uuid())
+  personId    String
+  officerId   String
+  violations  Json
+  location    String
+  fineTotal   Float
+  courtDate   DateTime?
+  createdAt   DateTime @default(now())
+  person      Person   @relation(fields: [personId], references: [id])
+  officer     User     @relation(fields: [officerId], references: [id])
+}
+
+model Arrest {
+  id          String   @id @default(uuid())
+  personId    String
+  incidentId  String
+  officerId   String
+  charges     Json
+  bookedAt    DateTime?
+  releaseStatus String?
+  createdAt   DateTime @default(now())
+  person      Person   @relation(fields: [personId], references: [id])
+  incident    Incident @relation(fields: [incidentId], references: [id])
+  officer     User     @relation(fields: [officerId], references: [id])
+}
+
+model Warrant {
+  id         String   @id @default(uuid())
+  personId   String
+  status     String
+  issuedAt   DateTime
+  expiresAt  DateTime?
+  notes      String?
+  person     Person @relation(fields: [personId], references: [id])
+}
+
+model Bolo {
+  id               String   @id @default(uuid())
+  category         String
+  subjectRef       String
+  description      String
+  lastSeenLocation String?
+  isActive         Boolean  @default(true)
+  expiresAt        DateTime?
+  createdById      String
+  createdBy        User     @relation(fields: [createdById], references: [id])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Evidence {
+  id           String   @id @default(uuid())
+  incidentId   String
+  tag          String
+  description  String
+  location     String?
+  custodyLogJson Json @default("[]")
+  incident     Incident @relation(fields: [incidentId], references: [id])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String
+  action     String
+  entityType String
+  entityId   String
+  diffJson   Json
+  at         DateTime @default(now())
+  actor      User     @relation("AuditActor", fields: [actorId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String
+  payload   Json
+  createdAt DateTime @default(now())
+  readAt    DateTime?
+  user      User     @relation(fields: [userId], references: [id])
+}

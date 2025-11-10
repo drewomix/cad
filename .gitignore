@@ -1,0 +1,11 @@
+node_modules
+pnpm-lock.yaml
+.env
+apps/api/dist
+apps/web/dist
+coverage
+.tmp
+.DS_Store
+.idea
+.vscode
+postgres-data
