@@ -1,0 +1,43 @@
+### Login
+POST http://localhost:3333/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "dispatcher@cad.local",
+  "password": "Password123!"
+}
+
+### Create Incident
+POST http://localhost:3333/api/incidents
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "priority": 2,
+  "type": "Robbery",
+  "address": "Mission Row PD",
+  "narrative": "Caller reports robbery in progress",
+  "locationLat": 34.0522,
+  "locationLng": -118.2437
+}
+
+### Approve Citizen Vehicle
+POST http://localhost:3333/api/citizen/vehicles/{{vehicleId}}/approve
+Content-Type: application/json
+Authorization: Bearer {{supervisor_token}}
+
+{
+  "status": "APPROVED"
+}
+
+### Submit BOLO
+POST http://localhost:3333/api/bolos
+Content-Type: application/json
+Authorization: Bearer {{dispatcher_token}}
+
+{
+  "category": "VEHICLE",
+  "subjectRef": "LS1005",
+  "description": "Black four-door sedan fleeing last robbery",
+  "expiresAt": "2024-12-31T05:00:00.000Z"
+}
